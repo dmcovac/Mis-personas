@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Mis personas" />
+<meta name="theme-color" content="#D4537E" />
+<title>Mis personas</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --pink: #ED93B1;
+  --pink-light: #FBEAF0;
+  --pink-mid: #D4537E;
+  --pink-dark: #72243E;
+  --teal-light: #E1F5EE;
+  --teal-dark: #085041;
+  --amber: #EF9F27;
+  --amber-light: #FAEEDA;
+  --amber-dark: #633806;
+  --bg: #ffffff;
+  --bg2: #f7f6f3;
+  --border: rgba(0,0,0,0.12);
+  --border2: rgba(0,0,0,0.22);
+  --text: #1a1a18;
+  --text2: #6b6b67;
+  --text3: #9e9e99;
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a18;
+    --bg2: #252523;
+    --border: rgba(255,255,255,0.12);
+    --border2: rgba(255,255,255,0.22);
+    --text: #f0ede8;
+    --text2: #a8a8a3;
+    --text3: #6b6b67;
+    --pink-light: #3a1a26;
+    --pink-dark: #f4a8c4;
+    --teal-light: #0a2b20;
+    --teal-dark: #7ad4b0;
+    --amber-light: #2b1f07;
+    --amber-dark: #f5c47a;
+  }
+}
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+#app { max-width: 480px; margin: 0 auto; min-height: 100%; position: relative; }
+.view { display: none; flex-direction: column; min-height: 100dvh; }
+.view.active { display: flex; }
+
+/* HEADER */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 56px 20px 14px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--bg);
+  position: sticky; top: 0; z-index: 10;
+}
+.header-title { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--text); }
+.header-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.btn-add {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--pink-mid); color: white; border: none;
+  font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  line-height: 1; flex-shrink: 0;
+}
+.btn-add:active { transform: scale(0.94); }
+
+/* SEARCH */
+.search-wrap { padding: 12px 20px 8px; background: var(--bg); position: sticky; top: 96px; z-index: 9; }
+.search-wrap input {
+  width: 100%; padding: 9px 14px; font-size: 15px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg2);
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+}
+.search-wrap input:focus { border-color: var(--border2); }
+
+/* BIRTHDAY BANNER */
+.birthday-banner {
+  margin: 0 20px 10px;
+  padding: 10px 14px;
+  background: var(--amber-light);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--amber);
+  font-size: 13px; color: var(--amber-dark); line-height: 1.5;
+  display: none;
+}
+.birthday-banner.visible { display: block; }
+
+/* CONTACT LIST */
+.contact-list { padding: 0 20px; flex: 1; }
+.contact-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 0;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+}
+.contact-item:active { opacity: 0.6; }
+.contact-item:last-child { border-bottom: none; }
+.avatar {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 500; flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.contact-info { flex: 1; min-width: 0; }
+.contact-name { font-size: 15px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-meta { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.bday-badge {
+  font-size: 11px; padding: 3px 9px;
+  background: var(--amber-light); color: var(--amber-dark);
+  border-radius: 20px; white-space: nowrap; flex-shrink: 0; font-weight: 500;
+}
+
+/* EMPTY */
+.empty-state { text-align: center; padding: 64px 24px; color: var(--text2); font-size: 14px; line-height: 1.7; }
+.empty-icon { font-size: 40px; margin-bottom: 14px; }
+
+/* DETAIL */
+.detail-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 52px 20px 14px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--bg);
+  position: sticky; top: 0; z-index: 10;
+}
+.btn-back {
+  background: none; border: none; cursor: pointer;
+  color: var(--text2); font-size: 22px; padding: 0 8px 0 0; line-height: 1;
+}
+.detail-avatar-wrap { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.detail-avatar { width: 54px; height: 54px; border-radius: 50%; font-size: 18px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.detail-name { font-size: 18px; font-weight: 500; color: var(--text); }
+.detail-since { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.btn-edit {
+  background: none; border: 0.5px solid var(--border2);
+  border-radius: var(--radius); padding: 6px 14px;
+  font-size: 13px; cursor: pointer; color: var(--text2);
+  font-family: inherit; flex-shrink: 0;
+}
+.btn-edit:active { opacity: 0.6; }
+
+.detail-body { padding: 18px 20px; flex: 1; }
+.section { margin-bottom: 22px; }
+.section-label {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.07em;
+  color: var(--text3); text-transform: uppercase; margin-bottom: 8px;
+}
+.section-content {
+  font-size: 14px; color: var(--text); line-height: 1.6;
+  background: var(--bg2); border-radius: var(--radius);
+  padding: 10px 13px; min-height: 38px;
+}
+.section-content.empty { color: var(--text3); font-style: italic; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 4px 11px; background: var(--pink-light); color: var(--pink-dark); border-radius: 20px; }
+.items-list { list-style: none; }
+.items-list li { font-size: 14px; padding: 5px 0; color: var(--text); border-bottom: 0.5px solid var(--border); display: flex; gap: 8px; }
+.items-list li:last-child { border-bottom: none; }
+.items-list li::before { content: "·"; color: var(--text3); }
+.convo-ideas { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.convo-ideas li { font-size: 13px; padding: 8px 12px; background: var(--teal-light); color: var(--teal-dark); border-radius: var(--radius); line-height: 1.5; }
+
+/* FORM */
+.form-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 52px 20px 14px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--bg);
+  position: sticky; top: 0; z-index: 10;
+}
+.form-title { font-size: 17px; font-weight: 500; color: var(--text); }
+.form-body { padding: 18px 20px; flex: 1; overflow-y: auto; }
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 11px; font-weight: 500; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.07em; }
+.field input, .field textarea {
+  width: 100%; font-size: 15px; font-family: inherit;
+  background: var(--bg2); color: var(--text);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius); padding: 10px 13px; outline: none;
+}
+.field input:focus, .field textarea:focus { border-color: var(--border2); }
+.field textarea { min-height: 78px; resize: vertical; line-height: 1.5; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btn-save {
+  width: 100%; padding: 14px;
+  background: var(--pink-mid); color: white;
+  border: none; border-radius: var(--radius-lg);
+  font-size: 16px; font-weight: 500; cursor: pointer; font-family: inherit;
+  margin-top: 6px;
+}
+.btn-save:active { opacity: 0.85; transform: scale(0.98); }
+.btn-delete {
+  width: 100%; padding: 11px; margin-top: 10px;
+  background: none; color: var(--text2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); font-size: 14px; cursor: pointer; font-family: inherit;
+}
+.btn-delete:active { opacity: 0.6; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- LIST -->
+<div id="view-list" class="view active">
+  <div class="header">
+    <div>
+      <div class="header-title">Mis personas</div>
+      <div class="header-sub" id="contact-count">0 personas</div>
+    </div>
+    <button class="btn-add" onclick="showForm(null)">+</button>
+  </div>
+  <div class="search-wrap">
+    <input type="text" id="search-input" placeholder="Buscar..." oninput="renderList()" autocomplete="off" />
+  </div>
+  <div style="padding: 0 20px;">
+    <div class="birthday-banner" id="birthday-banner"></div>
+  </div>
+  <div class="contact-list" id="contact-list"></div>
+</div>
+
+<!-- DETAIL -->
+<div id="view-detail" class="view">
+  <div class="detail-header">
+    <button class="btn-back" onclick="showView('list')">‹</button>
+    <div class="detail-avatar-wrap">
+      <div class="detail-avatar" id="d-avatar"></div>
+      <div>
+        <div class="detail-name" id="d-name"></div>
+        <div class="detail-since" id="d-since"></div>
+      </div>
+    </div>
+    <button class="btn-edit" onclick="editCurrent()">Editar</button>
+  </div>
+  <div class="detail-body">
+    <div class="section">
+      <div class="section-label">Cumpleaños</div>
+      <div class="section-content" id="d-bday"></div>
+    </div>
+    <div class="section">
+      <div class="section-label">Gustos y aficiones</div>
+      <div class="chips" id="d-gustos"></div>
+    </div>
+    <div class="section">
+      <div class="section-label">Notas</div>
+      <div class="section-content" id="d-notas"></div>
+    </div>
+    <div class="section">
+      <div class="section-label">Regalos que le he hecho</div>
+      <ul class="items-list" id="d-regalos"></ul>
+    </div>
+    <div class="section">
+      <div class="section-label">Ideas de conversación</div>
+      <ul class="convo-ideas" id="d-convo"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- FORM -->
+<div id="view-form" class="view">
+  <div class="form-header">
+    <button class="btn-back" onclick="cancelForm()">‹</button>
+    <div class="form-title" id="form-title">Nueva persona</div>
+  </div>
+  <div class="form-body">
+    <div class="field">
+      <label>Nombre</label>
+      <input type="text" id="f-name" placeholder="Nombre completo" autocomplete="off" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Cumpleaños</label>
+        <input type="date" id="f-bday" />
+      </div>
+      <div class="field">
+        <label>Nos conocemos desde</label>
+        <input type="text" id="f-since" placeholder="2015, universidad…" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Gustos y aficiones</label>
+      <input type="text" id="f-gustos" placeholder="café, fotografía… (separados por comas)" />
+    </div>
+    <div class="field">
+      <label>Notas libres</label>
+      <textarea id="f-notas" placeholder="Cosas que quiero recordar…"></textarea>
+    </div>
+    <div class="field">
+      <label>Regalos que le he hecho</label>
+      <textarea id="f-regalos" placeholder="Un libro (2023)&#10;Flores (2024)&#10;(uno por línea)"></textarea>
+    </div>
+    <div class="field">
+      <label>Ideas de conversación</label>
+      <textarea id="f-convo" placeholder="Preguntarle por su viaje a Japón&#10;Cómo le va con el nuevo trabajo&#10;(una por línea)"></textarea>
+    </div>
+    <button class="btn-save" onclick="saveContact()">Guardar</button>
+    <button class="btn-delete" id="btn-delete" onclick="deleteContact()" style="display:none">Eliminar contacto</button>
+    <div style="height: 32px;"></div>
+  </div>
+</div>
+
+</div>
+<script>
+const COLORS = [
+  {bg:'#FBEAF0',text:'#72243E'},{bg:'#E1F5EE',text:'#085041'},
+  {bg:'#E6F1FB',text:'#0C447C'},{bg:'#FAEEDA',text:'#633806'},
+  {bg:'#EEEDFE',text:'#3C3489'},{bg:'#EAF3DE',text:'#27500A'}
+];
+const COLORS_DARK = [
+  {bg:'#3a1a26',text:'#f4a8c4'},{bg:'#0a2b20',text:'#7ad4b0'},
+  {bg:'#0a1e35',text:'#85b7eb'},{bg:'#2b1f07',text:'#f5c47a'},
+  {bg:'#1e1a40',text:'#afa9ec'},{bg:'#142208',text:'#97c459'}
+];
+
+const isDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+let contacts = JSON.parse(localStorage.getItem('mis-personas-v2') || '[]');
+let currentId = null;
+let editingId = null;
+
+function save() { localStorage.setItem('mis-personas-v2', JSON.stringify(contacts)); }
+
+function getColor(name) {
+  let h = 0;
+  for (let c of name) h = (h * 31 + c.charCodeAt(0)) % 6;
+  const palette = isDark() ? COLORS_DARK : COLORS;
+  return palette[Math.abs(h)];
+}
+
+function initials(name) {
+  return name.split(' ').slice(0,2).map(w => w[0]?.toUpperCase() || '').join('');
+}
+
+function daysUntilBirthday(bdayStr) {
+  if (!bdayStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const bday = new Date(bdayStr);
+  const next = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
+  if (next < today) next.setFullYear(today.getFullYear() + 1);
+  return Math.round((next - today) / 86400000);
+}
+
+function formatBday(bdayStr) {
+  if (!bdayStr) return '—';
+  const d = new Date(bdayStr + 'T00:00:00');
+  const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const days = daysUntilBirthday(bdayStr);
+  let suffix = '';
+  if (days === 0) suffix = ' — ¡hoy es su cumpleaños!';
+  else if (days === 1) suffix = ' — ¡mañana!';
+  else if (days <= 30) suffix = ` — en ${days} días`;
+  return `${d.getDate()} de ${months[d.getMonth()]}${suffix}`;
+}
+
+function showView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  window.scrollTo(0, 0);
+  if (v === 'list') renderList();
+}
+
+function renderList() {
+  const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+  const filtered = contacts.filter(c =>
+    c.name.toLowerCase().includes(q) ||
+    (c.gustos || '').toLowerCase().includes(q) ||
+    (c.notas || '').toLowerCase().includes(q)
+  );
+  filtered.sort((a, b) => a.name.localeCompare(b, 'es'));
+
+  const n = contacts.length;
+  document.getElementById('contact-count').textContent = `${n} ${n === 1 ? 'persona' : 'personas'}`;
+
+  const upcoming = contacts
+    .map(c => ({ c, d: daysUntilBirthday(c.bday) }))
+    .filter(({ d }) => d !== null && d <= 7)
+    .sort((a, b) => a.d - b.d);
+
+  const banner = document.getElementById('birthday-banner');
+  if (upcoming.length > 0) {
+    const names = upcoming.map(({ c, d }) =>
+      d === 0 ? `${c.name.split(' ')[0]} (¡hoy!)` : `${c.name.split(' ')[0]} (en ${d} ${d === 1 ? 'día' : 'días'})`
+    ).join(', ');
+    banner.textContent = `Cumpleaños próximos: ${names}`;
+    banner.classList.add('visible');
+  } else {
+    banner.classList.remove('visible');
+  }
+
+  const list = document.getElementById('contact-list');
+  if (filtered.length === 0) {
+    list.innerHTML = contacts.length === 0
+      ? `<div class="empty-state"><div class="empty-icon">♡</div>Aún no has añadido a nadie.<br>Pulsa + para empezar.</div>`
+      : `<div class="empty-state">Sin resultados para "${q}"</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(c => {
+    const col = getColor(c.name);
+    const days = daysUntilBirthday(c.bday);
+    const badge = days !== null && days <= 30
+      ? `<span class="bday-badge">${days === 0 ? '¡hoy!' : days === 1 ? 'mañana' : days + 'd'}</span>` : '';
+    const parts = [
+      c.since ? `Desde ${c.since}` : '',
+      c.gustos ? c.gustos.split(',').slice(0,2).map(s => s.trim()).join(', ') : ''
+    ].filter(Boolean);
+    return `<div class="contact-item" onclick="showDetail('${c.id}')">
+      <div class="avatar" style="background:${col.bg};color:${col.text}">${initials(c.name)}</div>
+      <div class="contact-info">
+        <div class="contact-name">${c.name}</div>
+        ${parts.length ? `<div class="contact-meta">${parts.join(' · ')}</div>` : ''}
+      </div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function showDetail(id) {
+  const c = contacts.find(x => x.id === id);
+  if (!c) return;
+  currentId = id;
+  const col = getColor(c.name);
+
+  const av = document.getElementById('d-avatar');
+  av.style.background = col.bg; av.style.color = col.text;
+  av.textContent = initials(c.name);
+  document.getElementById('d-name').textContent = c.name;
+  document.getElementById('d-since').textContent = c.since ? `Amigas/os desde ${c.since}` : '';
+
+  const bdayEl = document.getElementById('d-bday');
+  bdayEl.textContent = c.bday ? formatBday(c.bday) : '—';
+  bdayEl.className = 'section-content' + (!c.bday ? ' empty' : '');
+
+  const gustosEl = document.getElementById('d-gustos');
+  gustosEl.innerHTML = c.gustos
+    ? c.gustos.split(',').map(g => `<span class="chip">${g.trim()}</span>`).join('')
+    : '<span style="font-size:13px;color:var(--text3);font-style:italic">Sin gustos registrados</span>';
+
+  const notasEl = document.getElementById('d-notas');
+  notasEl.textContent = c.notas || '—';
+  notasEl.className = 'section-content' + (!c.notas ? ' empty' : '');
+
+  const regalosEl = document.getElementById('d-regalos');
+  regalosEl.innerHTML = c.regalos
+    ? c.regalos.split('\n').filter(Boolean).map(r => `<li>${r.trim()}</li>`).join('')
+    : '<li style="color:var(--text3);font-style:italic;list-style:none;padding:5px 0">Sin regalos registrados</li>';
+
+  const convoEl = document.getElementById('d-convo');
+  convoEl.innerHTML = c.convo
+    ? c.convo.split('\n').filter(Boolean).map(r => `<li>${r.trim()}</li>`).join('')
+    : '<li style="color:var(--text3);font-style:italic;padding:6px 10px;background:none">Sin ideas registradas</li>';
+
+  showView('detail');
+}
+
+function editCurrent() { showForm(currentId); }
+
+function showForm(id) {
+  editingId = id;
+  document.getElementById('form-title').textContent = id ? 'Editar persona' : 'Nueva persona';
+  document.getElementById('btn-delete').style.display = id ? 'block' : 'none';
+
+  if (id) {
+    const c = contacts.find(x => x.id === id);
+    document.getElementById('f-name').value = c.name || '';
+    document.getElementById('f-bday').value = c.bday || '';
+    document.getElementById('f-since').value = c.since || '';
+    document.getElementById('f-gustos').value = c.gustos || '';
+    document.getElementById('f-notas').value = c.notas || '';
+    document.getElementById('f-regalos').value = c.regalos || '';
+    document.getElementById('f-convo').value = c.convo || '';
+  } else {
+    ['f-name','f-bday','f-since','f-gustos','f-notas','f-regalos','f-convo'].forEach(fid => {
+      document.getElementById(fid).value = '';
+    });
+  }
+  showView('form');
+}
+
+function cancelForm() {
+  if (editingId) showDetail(editingId);
+  else showView('list');
+}
+
+function saveContact() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('El nombre es obligatorio'); return; }
+  const data = {
+    name,
+    bday: document.getElementById('f-bday').value,
+    since: document.getElementById('f-since').value.trim(),
+    gustos: document.getElementById('f-gustos').value.trim(),
+    notas: document.getElementById('f-notas').value.trim(),
+    regalos: document.getElementById('f-regalos').value.trim(),
+    convo: document.getElementById('f-convo').value.trim(),
+  };
+  if (editingId) {
+    const idx = contacts.findIndex(x => x.id === editingId);
+    contacts[idx] = { ...contacts[idx], ...data };
+    save(); showDetail(editingId);
+  } else {
+    data.id = Date.now().toString();
+    contacts.push(data);
+    save(); showView('list');
+  }
+}
+
+function deleteContact() {
+  if (!confirm(`¿Eliminar a ${contacts.find(x=>x.id===editingId)?.name}?`)) return;
+  contacts = contacts.filter(x => x.id !== editingId);
+  save(); showView('list');
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+renderList();
+</script>
+</body>
+</html>
