@@ -128,6 +128,16 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .convo-ideas { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .convo-ideas li { font-size: 13px; padding: 8px 12px; background: var(--teal-light); color: var(--teal-dark); border-radius: var(--radius); line-height: 1.5; }
 
+/* LOG */
+.log-entry { margin-bottom: 16px; border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.log-entry-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg2); border-bottom: 0.5px solid var(--border); }
+.log-entry-date { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: 0.05em; text-transform: uppercase; }
+.log-entry-del { background: none; border: none; color: var(--text3); font-size: 16px; cursor: pointer; padding: 0; line-height: 1; }
+.log-entry-transcript { font-size: 13px; color: var(--text2); line-height: 1.6; padding: 10px 12px; border-bottom: 0.5px solid var(--border); }
+.log-entry-ideas { padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+.log-entry-idea { font-size: 13px; padding: 6px 10px; background: var(--teal-light); color: var(--teal-dark); border-radius: var(--radius); line-height: 1.5; }
+.log-empty { font-size: 13px; color: var(--text3); font-style: italic; padding: 8px 0; }
+
 /* VOICE SECTION */
 .voice-section { margin-bottom: 22px; }
 .voice-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -295,7 +305,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 
     <!-- VOICE NOTE SECTION -->
     <div class="voice-section">
-      <div class="section-label">Nota de voz + ideas de conversación</div>
+      <div class="section-label">Nueva nota de conversación</div>
       <div class="voice-controls">
         <button class="btn-record" id="btn-record" onclick="toggleRecording()">
           <span class="record-dot"></span>
@@ -305,13 +315,13 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
       </div>
       <div class="voice-transcript" id="voice-transcript">Pulsa para grabar lo que quieres recordar de tu última conversación...</div>
       <button class="btn-generate" id="btn-generate" onclick="generateIdeas()" disabled>
-        Generar ideas de conversación con IA
+        Guardar + generar ideas con IA
       </button>
     </div>
 
     <div class="section">
-      <div class="section-label">Ideas de conversación</div>
-      <ul class="convo-ideas" id="d-convo"></ul>
+      <div class="section-label">Historial de conversaciones</div>
+      <div id="d-log"></div>
     </div>
   </div>
 </div>
@@ -577,22 +587,15 @@ function showDetail(id) {
     ? c.regalos.split('\n').filter(Boolean).map(r=>`<li>${r.trim()}</li>`).join('')
     : '<li style="color:var(--text3);font-style:italic;list-style:none;padding:5px 0">Sin regalos registrados</li>';
 
-  document.getElementById('d-convo').innerHTML = c.convo
-    ? c.convo.split('\n').filter(Boolean).map(r=>`<li>${r.trim()}</li>`).join('')
-    : '<li style="color:var(--text3);font-style:italic;padding:6px 10px;background:none">Sin ideas registradas</li>';
+  // Render conversation log
+  renderLog(c);
 
-  // Voice section — load saved transcript if exists
-  currentTranscript = c.voiceNote || '';
+  // Reset voice section for new entry
+  currentTranscript = '';
   const transcriptEl = document.getElementById('voice-transcript');
-  if (currentTranscript) {
-    transcriptEl.textContent = currentTranscript;
-    transcriptEl.className = 'voice-transcript has-text';
-    document.getElementById('btn-generate').disabled = false;
-  } else {
-    transcriptEl.textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
-    transcriptEl.className = 'voice-transcript';
-    document.getElementById('btn-generate').disabled = true;
-  }
+  transcriptEl.textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
+  transcriptEl.className = 'voice-transcript';
+  document.getElementById('btn-generate').disabled = true;
   document.getElementById('btn-record').className = 'btn-record';
   document.getElementById('record-label').textContent = 'Grabar nota';
   document.getElementById('record-timer').style.display = 'none';
@@ -695,25 +698,19 @@ function startRecording() {
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
+    let sessionAccum = '';
     recognition.onresult = (e) => {
       let interim = '';
-      let sessionFinal = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) sessionFinal += e.results[i][0].transcript + ' ';
+      // Only process NEW results from resultIndex onward
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionAccum += e.results[i][0].transcript + ' ';
         else interim += e.results[i][0].transcript;
       }
-      const full = (accumulatedText + sessionFinal + interim).trim();
+      const full = (accumulatedText + sessionAccum + interim).trim();
       const el = document.getElementById('voice-transcript');
       el.textContent = full || '...';
       el.className = 'voice-transcript has-text';
-      if (sessionFinal) {
-        accumulatedText += sessionFinal;
-        currentTranscript = accumulatedText.trim();
-        if (currentId && currentTranscript.length > 3) {
-          const idx = contacts.findIndex(x => x.id === currentId);
-          if (idx !== -1) { contacts[idx].voiceNote = currentTranscript; save(); }
-        }
-      }
+      currentTranscript = (accumulatedText + sessionAccum).trim();
     };
 
     recognition.onerror = (e) => {
@@ -725,6 +722,8 @@ function startRecording() {
     };
 
     recognition.onend = () => {
+      accumulatedText = (accumulatedText + sessionAccum).trim() + (sessionAccum ? ' ' : '');
+      sessionAccum = '';
       if (isRecording) setTimeout(startSession, 200);
     };
 
@@ -771,12 +770,16 @@ async function generateIdeas() {
   btn.disabled = true;
   btn.textContent = 'Generando ideas...';
 
-  const prompt = `Soy una persona que acaba de hablar con ${c.name}. Aquí hay algunas cosas sobre esta persona: gustos (${c.gustos || 'no especificados'}), notas (${c.notas || 'ninguna'}).
+  // Build context from previous log entries
+  const prevLog = (c.log || []).slice(-3).map(e => `[${e.date}]: ${e.transcript}`).join('\n');
+  const contextStr = prevLog ? `\n\nConversaciones anteriores para contexto:\n${prevLog}` : '';
 
-Esto es lo que recuerdo de nuestra última conversación o encuentro:
-"${currentTranscript}"
+  const prompt = `Soy una persona que acaba de hablar con ${c.name}. Información sobre esta persona: gustos (${c.gustos || 'no especificados'}), notas (${c.notas || 'ninguna'}).
 
-Dame exactamente 4 ideas concretas y personales de temas de conversación para la próxima vez que nos veamos. Que sean naturales, cálidas y basadas en lo que te he contado. Responde solo con las 4 ideas, una por línea, sin numeración ni viñetas, sin introducción.`;
+Lo que recuerdo de nuestra última conversación:
+"${currentTranscript}"${contextStr}
+
+Dame exactamente 4 ideas concretas y personales de temas de conversación para la próxima vez que nos veamos. Basadas principalmente en la última conversación, pero puedes enriquecer con el historial anterior. Que sean naturales y cálidas. Responde solo con las 4 ideas, una por línea, sin numeración ni viñetas, sin introducción.`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -802,27 +805,59 @@ Dame exactamente 4 ideas concretas y personales de temas de conversación para l
     const data = await res.json();
     const ideas = data.content[0].text.trim();
 
-    // Save ideas to contact
+    // Save as new log entry
     const idx = contacts.findIndex(x => x.id === currentId);
-    contacts[idx].convo = ideas;
+    if (!contacts[idx].log) contacts[idx].log = [];
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) +
+      ' · ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    contacts[idx].log.unshift({ id: Date.now().toString(), date: dateStr, transcript: currentTranscript, ideas });
     save();
 
-    // Update UI
-    document.getElementById('d-convo').innerHTML = ideas
-      .split('\n').filter(Boolean)
-      .map(r => `<li>${r.trim()}</li>`).join('');
+    // Reset voice section
+    currentTranscript = '';
+    document.getElementById('voice-transcript').textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
+    document.getElementById('voice-transcript').className = 'voice-transcript';
+    btn.disabled = true;
+    btn.textContent = 'Guardar + generar ideas con IA';
 
-    btn.textContent = 'Ideas generadas';
-    setTimeout(() => {
-      btn.textContent = 'Generar ideas de conversación con IA';
-      btn.disabled = false;
-    }, 2000);
+    // Refresh log
+    renderLog(contacts[idx]);
 
   } catch (err) {
-    btn.textContent = 'Generar ideas de conversación con IA';
+    btn.textContent = 'Guardar + generar ideas con IA';
     btn.disabled = false;
     alert('Error al generar ideas: ' + err.message);
   }
+}
+
+function renderLog(c) {
+  const el = document.getElementById('d-log');
+  if (!c.log || c.log.length === 0) {
+    el.innerHTML = '<p class="log-empty">Aún no hay entradas. Graba una nota y genera ideas para empezar el historial.</p>';
+    return;
+  }
+  el.innerHTML = c.log.map(entry => `
+    <div class="log-entry">
+      <div class="log-entry-header">
+        <span class="log-entry-date">${entry.date}</span>
+        <button class="log-entry-del" onclick="deleteLogEntry('${entry.id}')">×</button>
+      </div>
+      <div class="log-entry-transcript">${entry.transcript}</div>
+      <div class="log-entry-ideas">
+        ${entry.ideas.split('\n').filter(Boolean).map(i => `<div class="log-entry-idea">${i.trim()}</div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteLogEntry(entryId) {
+  if (!confirm('¿Eliminar esta entrada del historial?')) return;
+  const idx = contacts.findIndex(x => x.id === currentId);
+  if (idx === -1) return;
+  contacts[idx].log = (contacts[idx].log || []).filter(e => e.id !== entryId);
+  save();
+  renderLog(contacts[idx]);
 }
 
 // =====================================================
