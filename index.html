@@ -581,11 +581,18 @@ function showDetail(id) {
     ? c.convo.split('\n').filter(Boolean).map(r=>`<li>${r.trim()}</li>`).join('')
     : '<li style="color:var(--text3);font-style:italic;padding:6px 10px;background:none">Sin ideas registradas</li>';
 
-  // Reset voice section
-  currentTranscript = '';
-  document.getElementById('voice-transcript').textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
-  document.getElementById('voice-transcript').className = 'voice-transcript';
-  document.getElementById('btn-generate').disabled = true;
+  // Voice section — load saved transcript if exists
+  currentTranscript = c.voiceNote || '';
+  const transcriptEl = document.getElementById('voice-transcript');
+  if (currentTranscript) {
+    transcriptEl.textContent = currentTranscript;
+    transcriptEl.className = 'voice-transcript has-text';
+    document.getElementById('btn-generate').disabled = false;
+  } else {
+    transcriptEl.textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
+    transcriptEl.className = 'voice-transcript';
+    document.getElementById('btn-generate').disabled = true;
+  }
   document.getElementById('btn-record').className = 'btn-record';
   document.getElementById('record-label').textContent = 'Grabar nota';
   document.getElementById('record-timer').style.display = 'none';
@@ -651,7 +658,7 @@ function deleteContact() {
 }
 
 // =====================================================
-// VOICE RECORDING (Web Speech API — nativa en Safari)
+// VOICE RECORDING (Web Speech API — iOS Safari compatible)
 // =====================================================
 function toggleRecording() {
   if (isRecording) stopRecording();
@@ -664,39 +671,10 @@ function startRecording() {
     alert('Tu navegador no soporta reconocimiento de voz. Usa Safari en iOS 16+.');
     return;
   }
-  recognition = new SpeechRecognition();
-  recognition.lang = 'es-ES';
-  recognition.continuous = true;
-  recognition.interimResults = true;
 
-  let finalTranscript = '';
-
-  recognition.onresult = (e) => {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + ' ';
-      else interim += e.results[i][0].transcript;
-    }
-    const full = (finalTranscript + interim).trim();
-    currentTranscript = finalTranscript.trim();
-    const el = document.getElementById('voice-transcript');
-    el.textContent = full || '...';
-    el.className = 'voice-transcript has-text';
-  };
-
-  recognition.onerror = (e) => {
-    if (e.error !== 'no-speech') {
-      stopRecording();
-      alert('Error al grabar: ' + e.error);
-    }
-  };
-
-  recognition.onend = () => {
-    if (isRecording) recognition.start();
-  };
-
-  recognition.start();
   isRecording = true;
+  currentTranscript = '';
+  let accumulatedText = '';
 
   document.getElementById('btn-record').className = 'btn-record recording';
   document.getElementById('record-label').textContent = 'Parar';
@@ -708,17 +686,67 @@ function startRecording() {
     const s = (recordSeconds % 60).toString().padStart(2,'0');
     document.getElementById('record-timer').textContent = `${m}:${s}`;
   }, 1000);
+
+  function startSession() {
+    if (!isRecording) return;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (e) => {
+      let interim = '';
+      let sessionFinal = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionFinal += e.results[i][0].transcript + ' ';
+        else interim += e.results[i][0].transcript;
+      }
+      const full = (accumulatedText + sessionFinal + interim).trim();
+      const el = document.getElementById('voice-transcript');
+      el.textContent = full || '...';
+      el.className = 'voice-transcript has-text';
+      if (sessionFinal) {
+        accumulatedText += sessionFinal;
+        currentTranscript = accumulatedText.trim();
+      }
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error === 'no-speech' || e.error === 'audio-capture') {
+        if (isRecording) setTimeout(startSession, 300);
+      } else if (e.error !== 'aborted') {
+        stopRecording();
+      }
+    };
+
+    recognition.onend = () => {
+      if (isRecording) setTimeout(startSession, 200);
+    };
+
+    try { recognition.start(); } catch(e) {}
+  }
+
+  startSession();
 }
 
 function stopRecording() {
-  if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
   isRecording = false;
   clearInterval(recordTimer);
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+    recognition = null;
+  }
   document.getElementById('btn-record').className = 'btn-record';
   document.getElementById('record-label').textContent = 'Grabar nota';
   document.getElementById('record-timer').style.display = 'none';
-  if (currentTranscript.trim().length > 5) {
+  if (currentTranscript.trim().length > 3) {
     document.getElementById('btn-generate').disabled = false;
+    // Save transcript to contact
+    if (currentId) {
+      const idx = contacts.findIndex(x => x.id === currentId);
+      if (idx !== -1) { contacts[idx].voiceNote = currentTranscript.trim(); save(); }
+    }
   }
 }
 
