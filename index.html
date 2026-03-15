@@ -717,6 +717,10 @@ function startRecording() {
       el.textContent = full || '...';
       el.className = 'voice-transcript has-text';
       currentTranscript = (accumulatedText + sessionAccum).trim();
+      if (currentTranscript.length > 3) {
+        document.getElementById('btn-generate').disabled = false;
+        document.getElementById('btn-save-note').disabled = false;
+      }
     };
 
     recognition.onerror = (e) => {
