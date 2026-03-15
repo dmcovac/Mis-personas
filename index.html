@@ -764,7 +764,10 @@ function stopRecording() {
 // =====================================================
 function saveNoteOnly() {
   const c = contacts.find(x => x.id === currentId);
-  if (!c || !currentTranscript) return;
+  const text = document.getElementById('voice-transcript').textContent;
+  const hasText = text && text.length > 10 && !text.startsWith('Pulsa');
+  if (!c || (!currentTranscript && !hasText)) { alert('Graba una nota primero.'); return; }
+  if (!currentTranscript && hasText) currentTranscript = text;
   const idx = contacts.findIndex(x => x.id === currentId);
   if (!contacts[idx].log) contacts[idx].log = [];
   const now = new Date();
