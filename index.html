@@ -299,7 +299,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
       <div class="section-content" id="d-notas"></div>
     </div>
     <div class="section">
-      <div class="section-label">Regalos ideales</div>
+      <div class="section-label">Regalos que le he hecho</div>
       <ul class="items-list" id="d-regalos"></ul>
     </div>
 
@@ -314,9 +314,14 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
         <span id="record-timer" style="font-size:13px;color:var(--text3);display:none"></span>
       </div>
       <div class="voice-transcript" id="voice-transcript">Pulsa para grabar lo que quieres recordar de tu última conversación...</div>
-      <button class="btn-generate" id="btn-generate" onclick="generateIdeas()" disabled>
-        Guardar + generar ideas con IA
-      </button>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn-generate" id="btn-save-note" onclick="saveNoteOnly()" disabled style="flex:1;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border2);">
+          Guardar nota
+        </button>
+        <button class="btn-generate" id="btn-generate" onclick="generateIdeas()" disabled style="flex:2;">
+          Generar ideas con IA
+        </button>
+      </div>
     </div>
 
     <div class="section">
@@ -356,7 +361,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
       <textarea id="f-notas" placeholder="Cosas que quiero recordar…"></textarea>
     </div>
     <div class="field">
-      <label>Regalos ideales</label>
+      <label>Regalos que le he hecho</label>
       <textarea id="f-regalos" placeholder="Un libro (2023)&#10;Flores (2024)&#10;(uno por línea)"></textarea>
     </div>
     <div class="field">
@@ -596,6 +601,7 @@ function showDetail(id) {
   transcriptEl.textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
   transcriptEl.className = 'voice-transcript';
   document.getElementById('btn-generate').disabled = true;
+  document.getElementById('btn-save-note').disabled = true;
   document.getElementById('btn-record').className = 'btn-record';
   document.getElementById('record-label').textContent = 'Grabar nota';
   document.getElementById('record-timer').style.display = 'none';
@@ -745,16 +751,31 @@ function stopRecording() {
   document.getElementById('record-timer').style.display = 'none';
   if (currentTranscript.trim().length > 3) {
     document.getElementById('btn-generate').disabled = false;
-    // Save transcript to contact
-    if (currentId) {
-      const idx = contacts.findIndex(x => x.id === currentId);
-      if (idx !== -1) { contacts[idx].voiceNote = currentTranscript.trim(); save(); }
-    }
+    document.getElementById('btn-save-note').disabled = false;
   }
 }
 
 // =====================================================
 // AI — GENERAR IDEAS DE CONVERSACIÓN
+// =====================================================
+function saveNoteOnly() {
+  const c = contacts.find(x => x.id === currentId);
+  if (!c || !currentTranscript) return;
+  const idx = contacts.findIndex(x => x.id === currentId);
+  if (!contacts[idx].log) contacts[idx].log = [];
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) +
+    ' · ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  contacts[idx].log.unshift({ id: Date.now().toString(), date: dateStr, transcript: currentTranscript, ideas: '' });
+  save();
+  currentTranscript = '';
+  document.getElementById('voice-transcript').textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
+  document.getElementById('voice-transcript').className = 'voice-transcript';
+  document.getElementById('btn-generate').disabled = true;
+  document.getElementById('btn-save-note').disabled = true;
+  renderLog(contacts[idx]);
+}
+
 // =====================================================
 async function generateIdeas() {
   const apiKey = getApiKey();
@@ -819,13 +840,14 @@ Dame exactamente 4 ideas concretas y personales de temas de conversación para l
     document.getElementById('voice-transcript').textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
     document.getElementById('voice-transcript').className = 'voice-transcript';
     btn.disabled = true;
-    btn.textContent = 'Guardar + generar ideas con IA';
+    btn.textContent = 'Generar ideas con IA';
+    document.getElementById('btn-save-note').disabled = true;
 
     // Refresh log
     renderLog(contacts[idx]);
 
   } catch (err) {
-    btn.textContent = 'Guardar + generar ideas con IA';
+    btn.textContent = 'Generar ideas con IA';
     btn.disabled = false;
     alert('Error al generar ideas: ' + err.message);
   }
