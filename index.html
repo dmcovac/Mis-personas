@@ -600,7 +600,7 @@ function showDetail(id) {
   const transcriptEl = document.getElementById('voice-transcript');
   transcriptEl.textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
   transcriptEl.className = 'voice-transcript';
-  document.getElementById('btn-generate').disabled = true;
+  
   
   document.getElementById('btn-record').className = 'btn-record';
   document.getElementById('record-label').textContent = 'Grabar nota';
@@ -718,7 +718,7 @@ function startRecording() {
       el.className = 'voice-transcript has-text';
       currentTranscript = (accumulatedText + sessionAccum).trim();
       if (currentTranscript.length > 3) {
-        document.getElementById('btn-generate').disabled = false;
+        
         
       }
     };
@@ -754,7 +754,7 @@ function stopRecording() {
   document.getElementById('record-label').textContent = 'Grabar nota';
   document.getElementById('record-timer').style.display = 'none';
   if (currentTranscript.trim().length > 3) {
-    document.getElementById('btn-generate').disabled = false;
+    
     
   }
 }
@@ -778,7 +778,7 @@ function saveNoteOnly() {
   currentTranscript = '';
   document.getElementById('voice-transcript').textContent = 'Pulsa para grabar lo que quieres recordar de tu última conversación...';
   document.getElementById('voice-transcript').className = 'voice-transcript';
-  document.getElementById('btn-generate').disabled = true;
+  
   
   renderLog(contacts[idx]);
 }
