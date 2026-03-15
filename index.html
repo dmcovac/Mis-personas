@@ -709,6 +709,10 @@ function startRecording() {
       if (sessionFinal) {
         accumulatedText += sessionFinal;
         currentTranscript = accumulatedText.trim();
+        if (currentId && currentTranscript.length > 3) {
+          const idx = contacts.findIndex(x => x.id === currentId);
+          if (idx !== -1) { contacts[idx].voiceNote = currentTranscript; save(); }
+        }
       }
     };
 
